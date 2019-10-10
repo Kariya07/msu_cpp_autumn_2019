@@ -1,6 +1,9 @@
 
-run: main.o row.o column.o 
-	g++ main.o row.o column.o -o run --std=c++14 -O2
+all: main.o row.o column.o 
+	g++ main.o row.o column.o -o my_prog --std=c++14 -O2
+
+run: my_prog
+	./my_prog
 
 main.o: main.cpp 
 	g++ main.cpp -c --std=c++14 -O2
