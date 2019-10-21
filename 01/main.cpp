@@ -57,17 +57,22 @@ ReadTokenResult Tokenizer::ReadToken(Token &token) {
                 if (c == ' ') {
                     break;
                 }
-                if (c == '\0') {
-                    return END;
-                }
                 if (c >= '1' && c <= '9') {
                     state = NUM;
                     token.volume.push_back(c);
+                    if (str.empty()) {
+                        token.type = Number;
+                        return OK;
+                    }
                 } else {
                     //To filter numbers starting with 0
                     if (c == '0') {
                         state = ZerNum;
                         token.volume.push_back(c);
+                        if (str.empty()) {
+                            token.type = Number;
+                            return OK;
+                        }
                     } else {
                         switch (c) {
                             case '+':
@@ -93,6 +98,10 @@ ReadTokenResult Tokenizer::ReadToken(Token &token) {
             case NUM:
                 if (c >= '0' && c <= '9') {
                     token.volume.push_back(c);
+                    if (str.empty()) {
+                        token.type = Number;
+                        return OK;
+                    }
                 } else {
                     token.type = Number;
                     str.insert(str.begin(), c);
@@ -227,9 +236,9 @@ void Execute::Numb() {
 }
 
 int main(int argc, char *argv[]) {
-    std::string my_string = argv[1];
-    my_string += '\0';
-    Tokenizer f(my_string);
+    std::string my_string(argv[1]);
+    std::string &str = my_string;
+    Tokenizer f(str);
     Token token;
     std::vector<Token> token_mass;
     ReadTokenResult res;
@@ -245,7 +254,8 @@ int main(int argc, char *argv[]) {
     token_mass.push_back(token);
     int res1;
     try {
-        Execute execute(token_mass);
+        std::vector<Token> &toks = token_mass;
+        Execute execute(toks);
         res1 = execute.Check_string();
     }
     catch (std::out_of_range &) {
