@@ -9,7 +9,7 @@ private:
     size_t offset;
 public:
     LinearAllocator(size_t maxSize) : maxlength(maxSize), offset(0), send_mem(nullptr) {
-        memory = (char *) malloc(maxSize);
+        memory = new char[maxSize];
     }
 
     ~LinearAllocator() {
