@@ -13,7 +13,7 @@ public:
     }
 
     ~LinearAllocator() {
-        delete (memory);
+        delete[] (memory);
     }
 
     char *alloc(size_t size);

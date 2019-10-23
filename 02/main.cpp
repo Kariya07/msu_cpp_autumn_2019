@@ -15,7 +15,7 @@ int main() {
     }
     catch (std::bad_alloc) {
         std::cout << "Allocation failed" << std::endl;
-        return -1;
+        return 0;
     }
     return 0;
 }
