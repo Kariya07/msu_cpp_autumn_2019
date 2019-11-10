@@ -37,20 +37,21 @@ private:
     std::ostream &out_;
 
     template<class T>
-    Error process(T &&val) {
+    Error process(T &val) {
         return save_val(val);
     }
 
     template<class T, class... Args>
     Error process(T val, Args... args) {
-        if (save_val(val) == Error::CorruptedArchive){
+        if (save_val(val) == Error::CorruptedArchive) {
             return Error::CorruptedArchive;
-        }else{
+        } else {
             return process(args...);
         }
     }
 
-    static Error save_val(...) {
+    template<class T>
+    Error save_val(T) {
         return Error::CorruptedArchive;
     }
 
@@ -96,21 +97,22 @@ private:
 
     template<class T, class... Args>
     Error process(T &val, Args &... args) {
-        if(load_val(val) == Error::CorruptedArchive){
+        if (load_val(val) == Error::CorruptedArchive) {
             return Error::CorruptedArchive;
-        }else{
+        } else {
             return process(args...);
         }
     }
 
-    static Error load_val(...) {
+    template<class T>
+    Error load_val(T) {
         return Error::CorruptedArchive;
     }
 
     Error load_val(bool &val) {
         std::string text;
         in_ >> text;
-        if (text == " "){
+        if (text == " ") {
             return Error::NoError;
         }
         if (text == "true")
