@@ -23,15 +23,15 @@ void process(std::vector<std::string> &form_args, const T &val, const Args &... 
 }
 
 template<class... Args>
-std::string format(const Args &... args) {
-    std::stringstream res;
+std::string format(const std::string &form, const Args &... args) {
+    std::string res;
     std::vector<std::string> form_args;
     process(form_args, args...);
-    std::string form = form_args[0];
 
     State state = Str;
     int i = 0;
     std::string number;
+    size_t idx = 0;
     while (i < form.size()) {
         switch (state) {
             case Str:
@@ -42,16 +42,17 @@ std::string format(const Args &... args) {
                     state = Arg;
                     number.clear();
                 } else {
-                    res << form[i];
+                    res += form[i];
                 }
                 i++;
                 break;
             case Arg:
                 if (form[i] == '}') {
-                    if (stoul(number) >= (form_args.size() - 1)) {
+                    idx = stoul(number);
+                    if (idx >= form_args.size()) {
                         throw std::runtime_error("number of argument out of range");
                     }
-                    res << form_args[stoul(number) + 1];
+                    res += form_args[idx];
                     state = Str;
                     i++;
                     break;
@@ -59,7 +60,7 @@ std::string format(const Args &... args) {
                 if (form[i] < '0' || form[i] > '9') {
                     throw std::runtime_error("expected number in {}");
                 } else {
-                    number.push_back(form[i]);
+                    number += form[i];
                 }
                 i++;
                 break;
@@ -68,7 +69,7 @@ std::string format(const Args &... args) {
     if (state == Arg) {
         throw std::runtime_error("not closed {}");
     }
-    return res.str();
+    return res;
 }
 
 int main() {
