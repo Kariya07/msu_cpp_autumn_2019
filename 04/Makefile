@@ -1,4 +1,4 @@
-all: main.o 
+all: main.o
 	g++ main.o -o my_test
 
 test: my_test
