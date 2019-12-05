@@ -1,59 +1,33 @@
 #include <iostream>
 #include <cassert>
-#include <memory>
-#include <vector>
 
 template<class T>
 class Allocator {
     using value_type = T;
     using pointer = T *;
     using size_type = size_t;
-    pointer current_ptr;
     size_type size;
 public:
     pointer allocate(size_type count) {
-        current_ptr = (pointer) malloc(sizeof(T) * count);
         size = count;
-        return current_ptr;
+        return (pointer) malloc(sizeof(value_type) * count);
     }
 
     void deallocate(pointer ptr) {
         free(ptr);
     }
 
-    void construct(pointer ptr) {
-        ptr->value_type();
+    template <class... Args>
+    void construct(pointer ptr, Args&&... args) {
+        new(ptr) value_type(std::forward <Args> (args)...);
     }
 
     void destroy(pointer ptr) {
         ptr->~value_type();
     }
 
-    void resize(size_type newSize) {
-        if (size < newSize) {
-            auto newData = (pointer) malloc(sizeof(T) * newSize);
-            for (size_type i = 0; i < size; i++) {
-                newData[i] = current_ptr[i];
-                destroy(current_ptr + i);
-            }
-            free(current_ptr);
-            current_ptr = newData;
-            size = newSize;
-            return;
-        }
-        assert(!"not implemented yet");
-    }
-
     size_t max_size() const noexcept {
         return size;
-    }
-
-    pointer get() {
-        return current_ptr;
-    }
-
-    const pointer cget() const {
-        return current_ptr;
     }
 };
 
@@ -104,12 +78,26 @@ public:
     allocator_type _data;
     pointer current_ptr;
 
+    void buf_resize(size_type newSize) {
+        if (_data.max_size() < newSize) {
+            pointer newData = _data.allocate(newSize);;
+            for (size_type i = 0; i < N; i++) {
+                _data.construct(newData + i, current_ptr[i]);
+                _data.destroy(current_ptr + i);
+            }
+            _data.deallocate(current_ptr);
+            current_ptr = newData;
+            return;
+        }
+        assert(!"not implemented yet");
+    }
+
     iterator begin() noexcept {
         return iterator(current_ptr);
     }
 
     const_iterator cbegin() const noexcept {
-        return iterator(_data.cget());
+        return iterator(current_ptr);
     }
 
     iterator end() noexcept {
@@ -117,7 +105,7 @@ public:
     }
 
     const_iterator cend() const noexcept {
-        return iterator(_data.cget() + N);
+        return iterator(current_ptr + N);
     }
 
     explicit Vector(size_type count = 1024) {
@@ -128,7 +116,7 @@ public:
     Vector(size_type count, const value_type &defaultValue) {
         current_ptr = _data.allocate(count);
         for (size_type i = 0; i < count; i++) {
-            current_ptr[i] = defaultValue;
+            _data.construct(current_ptr + i, std::move(defaultValue));
         }
         N = count;
     }
@@ -139,7 +127,8 @@ public:
         auto current = init.begin();
         const auto end = init.end();
         while (current != end) {
-            current_ptr[i++] = *current++;
+            _data.construct(current_ptr + i, std::move(*current++));
+            i++;
         }
     }
 
@@ -168,18 +157,18 @@ public:
 
     void push_back(value_type &&value) {
         if (N == _data.max_size()) {
-            _data.resize(2 * N);
-            current_ptr = _data.get();
+            buf_resize(2 * N);
         }
-        current_ptr[N++] = value;
+        _data.construct(current_ptr + N, std::move(value));
+        N++;
     }
 
     void push_back(const value_type &value) {
         if (N == _data.max_size()) {
-            _data.resize(2 * N);
-            current_ptr = _data.get();
+            buf_resize(2 * N);
         }
-        current_ptr[N++] = value;
+        _data.construct(current_ptr + N, std::move(value));
+        N++;
     }
 
     void pop_back() {
@@ -202,8 +191,7 @@ public:
     void reserve(size_type count) {
         size_type my_capacity = _data.max_size();
         if (my_capacity < count) {
-            _data.resize(count);
-            current_ptr = _data.get();
+            buf_resize(count);
         }
     }
 
@@ -221,8 +209,7 @@ public:
             if (newsize > N) {
                 size_type my_capacity = _data.max_size();
                 if (newsize > my_capacity) {
-                    _data.resize(newsize);
-                    current_ptr = _data.get();
+                    buf_resize(newsize);
                 }
                 while (N < newsize) {
                     current_ptr[N++] = T();
@@ -241,8 +228,7 @@ public:
             if (newsize > N) {
                 size_type my_capacity = _data.max_size();
                 if (newsize > my_capacity) {
-                    _data.resize(newsize);
-                    current_ptr = _data.get();
+                    buf_resize(newsize);
                 }
                 while (N < newsize) {
                     current_ptr[N++] = defaultValue;

@@ -4,7 +4,7 @@ all: main.o
 test: my_test
 	./my_test
 
-main.o: main.cpp
+main.o: main.cpp vector.h
 	g++ main.cpp -c --std=c++14
 
 my_test: main.o 
