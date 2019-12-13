@@ -1,64 +1,8 @@
 #include <iostream>
 #include <cassert>
 
-template<class T>
-class Allocator {
-    using value_type = T;
-    using pointer = T *;
-    using size_type = size_t;
-    size_type size;
-public:
-    pointer allocate(size_type count) {
-        size = count;
-        return (pointer) malloc(sizeof(value_type) * count);
-    }
-
-    void deallocate(pointer ptr) {
-        free(ptr);
-    }
-
-    template <class... Args>
-    void construct(pointer ptr, Args&&... args) {
-        new(ptr) value_type(std::forward <Args> (args)...);
-    }
-
-    void destroy(pointer ptr) {
-        ptr->~value_type();
-    }
-
-    size_t max_size() const noexcept {
-        return size;
-    }
-};
-
-template<class T>
-class Iterator : public std::iterator<std::random_access_iterator_tag, T> {
-    T *ptr_;
-public:
-    explicit Iterator(T *ptr) : ptr_(ptr) {}
-
-    bool operator==(const Iterator<T> &other) const {
-        return ptr_ == other.ptr_;
-    }
-
-    bool operator!=(const Iterator<T> &other) const {
-        return !(*this == other);
-    }
-
-    T &operator*() const {
-        return *ptr_;
-    }
-
-    Iterator &operator++() {
-        ++ptr_;
-        return *this;
-    }
-
-    Iterator &operator--() {
-        --ptr_;
-        return *this;
-    }
-};
+#include "iterator.h"
+#include "alloc.h"
 
 template<class T, class Alloc = Allocator<T>>
 class Vector {
@@ -82,7 +26,7 @@ public:
         if (_alloc.max_size() < newSize) {
             pointer newData = _alloc.allocate(newSize);;
             for (size_type i = 0; i < _alloc.max_size(); i++) {
-                new (newData + i) value_type(current_ptr[i]);
+                _alloc.construct(newData + i, current_ptr[i]);
                 _alloc.destroy(current_ptr + i);
             }
             _alloc.deallocate(current_ptr);
@@ -116,7 +60,7 @@ public:
     Vector(size_type count, const value_type &defaultValue) {
         current_ptr = _alloc.allocate(count);
         for (size_type i = 0; i < count; i++) {
-            _alloc.construct(current_ptr + i, std::move(defaultValue));
+            _alloc.construct(current_ptr + i, defaultValue);
         }
         N = count;
     }
@@ -167,7 +111,7 @@ public:
         if (N == _alloc.max_size()) {
             buf_resize(2 * N);
         }
-        _alloc.construct(current_ptr + N, std::move(value));
+        _alloc.construct(current_ptr + N, value);
         N++;
     }
 
@@ -212,7 +156,8 @@ public:
                     buf_resize(newsize);
                 }
                 while (N < newsize) {
-                    current_ptr[N++] = T();
+                    _alloc.construct(current_ptr + N);
+                    N++;
                 }
             }
         }
@@ -231,7 +176,7 @@ public:
                     buf_resize(newsize);
                 }
                 while (N < newsize) {
-                    _alloc.construct(current_ptr + N, std::move(defaultValue));
+                    _alloc.construct(current_ptr + N, defaultValue);
                     N++;
                 }
             }
